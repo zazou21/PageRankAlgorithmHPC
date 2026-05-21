@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <mpi.h>
@@ -129,6 +130,34 @@ static string timesToString(const vector<double>& times) {
         s += std::to_string(times[i]);
     }
     return s;
+}
+
+static double loadBaselineAvg(const std::filesystem::path& results_path,
+                              int nodes, int edges) {
+    ifstream in(results_path);
+    if (!in.good()) return 0.0;
+
+    string line;
+    double found = 0.0;
+    while (std::getline(in, line)) {
+        if (line.empty()) continue;
+        std::stringstream ss(line);
+        std::string field;
+        std::vector<std::string> cols;
+        while (std::getline(ss, field, ',')) {
+            cols.push_back(field);
+        }
+        if (cols.size() < 7) continue;
+        if (cols[0] != "Sequential") continue;
+        try {
+            if (std::stoi(cols[3]) != nodes) continue;
+            if (std::stoi(cols[4]) != edges) continue;
+            found = std::stod(cols[6]);
+        } catch (...) {
+            continue;
+        }
+    }
+    return found;
 }
 
 int main(int argc, char** argv) {
@@ -280,7 +309,10 @@ int main(int argc, char** argv) {
                    "speedup_vs_seq,efficiency\n";
         }
 
-        const double seq_avg = seq_stats.average();
+        double seq_avg = seq_stats.average();
+        if (seq_avg <= 0.0 && !cfg.run_seq) {
+            seq_avg = loadBaselineAvg(results_path, graph.num_nodes, graph.num_edges);
+        }
 
         auto write_row = [&](const string& algorithm,
                              const string& mpi_p,
