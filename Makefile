@@ -1,8 +1,8 @@
 CXX ?= mpicxx
-CXXFLAGS ?= -O2 -g -fopenmp
+CXXFLAGS ?= -O2 -g -fopenmp -std=c++17
 
 EXE ?= experiment
-SRC ?= experiment.cpp
+SRC ?= experiment.cpp pagerank_common.cpp
 MPI_PROCS ?= 4
 
 all: build
